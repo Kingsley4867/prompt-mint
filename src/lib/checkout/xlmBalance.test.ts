@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   assessCheckoutXlmSufficiency,
+  calculateReservedBalanceStroops,
   computeMinimumReserveStroops,
   parseHorizonNativeBalanceToStroops,
   CHECKOUT_FEE_BUFFER_STROOPS,
@@ -20,6 +21,49 @@ describe("computeMinimumReserveStroops", () => {
     const reserve = computeMinimumReserveStroops(3, 1, 0, DEFAULT_BASE_RESERVE_STROOPS);
     // (2 + 3 + 1 - 0) * 0.5 XLM = 3 XLM
     expect(reserve).toBe(30_000_000n);
+  });
+});
+
+describe("calculateReservedBalanceStroops", () => {
+  it("calculates the reserve from entry counts and the base reserve", () => {
+    expect(
+      calculateReservedBalanceStroops({
+        subentryCount: 3,
+        numSponsoring: 1,
+        numSponsored: 0,
+        baseReserveStroops: DEFAULT_BASE_RESERVE_STROOPS,
+      }),
+    ).toBe(30_000_000n);
+  });
+
+  it("credits sponsored entries against the account reserve", () => {
+    expect(
+      calculateReservedBalanceStroops({
+        subentryCount: 3,
+        numSponsoring: 1,
+        numSponsored: 3,
+      }),
+    ).toBe(15_000_000n);
+  });
+
+  it("never returns a negative reserve when sponsored entries exceed liabilities", () => {
+    expect(
+      calculateReservedBalanceStroops({
+        subentryCount: 0,
+        numSponsoring: 0,
+        numSponsored: 3,
+      }),
+    ).toBe(0n);
+  });
+
+  it("rejects invalid ledger entry counts", () => {
+    expect(() =>
+      calculateReservedBalanceStroops({
+        subentryCount: -1,
+        numSponsoring: 0,
+        numSponsored: 0,
+      }),
+    ).toThrow(RangeError);
   });
 });
 

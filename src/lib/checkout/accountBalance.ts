@@ -2,7 +2,7 @@ import { Horizon } from "@stellar/stellar-sdk";
 import { horizonUrl, stellarNetwork } from "@/lib/env";
 import {
   DEFAULT_BASE_RESERVE_STROOPS,
-  computeMinimumReserveStroops,
+  calculateReservedBalanceStroops,
   parseHorizonNativeBalanceToStroops,
 } from "@/lib/checkout/xlmBalance";
 
@@ -61,12 +61,12 @@ export async function fetchCheckoutAccountSnapshot(
 
   return {
     nativeBalanceStroops,
-    minimumReserveStroops: computeMinimumReserveStroops(
+    minimumReserveStroops: calculateReservedBalanceStroops({
       subentryCount,
       numSponsoring,
       numSponsored,
-      baseReserve,
-    ),
+      baseReserveStroops: baseReserve,
+    }),
     subentryCount,
   };
 }

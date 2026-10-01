@@ -19,6 +19,13 @@ export interface CheckoutBalanceAssessment {
   message?: string;
 }
 
+export interface ReservedBalanceParams {
+  subentryCount: number;
+  numSponsoring: number;
+  numSponsored: number;
+  baseReserveStroops?: bigint;
+}
+
 /**
  * Parses a Horizon native XLM balance string into stroops without float rounding.
  */
@@ -49,9 +56,37 @@ export function computeMinimumReserveStroops(
   numSponsored: number,
   baseReserveStroops: bigint = DEFAULT_BASE_RESERVE_STROOPS,
 ): bigint {
-  const ledgerEntries = 2 + subentryCount + numSponsoring - numSponsored;
-  const entries = ledgerEntries > 0 ? ledgerEntries : 0;
-  return BigInt(entries) * baseReserveStroops;
+  return calculateReservedBalanceStroops({
+    subentryCount,
+    numSponsoring,
+    numSponsored,
+    baseReserveStroops,
+  });
+}
+
+/**
+ * Calculates the XLM reserved for an account's ledger entries, in stroops.
+ * Stellar's reserve formula is (2 + subentries + sponsoring - sponsored)
+ * multiplied by the network base reserve.
+ */
+export function calculateReservedBalanceStroops({
+  subentryCount,
+  numSponsoring,
+  numSponsored,
+  baseReserveStroops = DEFAULT_BASE_RESERVE_STROOPS,
+}: ReservedBalanceParams): bigint {
+  const counts = [subentryCount, numSponsoring, numSponsored];
+  if (counts.some((count) => !Number.isSafeInteger(count) || count < 0)) {
+    throw new RangeError("Ledger entry counts must be non-negative safe integers.");
+  }
+  if (baseReserveStroops < 0n) {
+    throw new RangeError("Base reserve must be non-negative.");
+  }
+
+  const ledgerEntries =
+    2n + BigInt(subentryCount) + BigInt(numSponsoring) - BigInt(numSponsored);
+  const reservedEntries = ledgerEntries > 0n ? ledgerEntries : 0n;
+  return reservedEntries * baseReserveStroops;
 }
 
 export function assessCheckoutXlmSufficiency(params: {
